@@ -1,7 +1,7 @@
 import Web3 from "web3";
 import {setGlobalState,getGlobalState} from './store'
 import abi from './abis/DAO.json'
-import { setgid } from "process";
+
 
 const {ethereum}= window;
 window.web3 = new Web3(ethereum)
@@ -115,6 +115,94 @@ const getInfo = async()=>{
     }
 
 }
+const getProposals = async()=>{
+    try {
+        if(!ethereum) return alert("Please install Metamask")
+        const contract = await getEthereumContract()
+        const proposals = await contract.methods.getProposals().call
+        setGlobalState('proposals',structuredProposals(proposals))
 
+    } catch (error) {
+        reportError(error)
+    }
+}
+const structuredProposals = (proposals)=>{
+    return proposals.map((proposal)=>({
+        id : proposal.id,
+        amount : window.web3.utils.fromWei(proposal.amount),
+        title : proposal.title,
+        description : proposal.description,
+        paid:proposal.paid,
+        passed : proposal.passed,
+        proposer : proposal.proposer,
+        upvotes : Number(proposal.upvotes),
+        downvotes:Number(proposal.downvotes),
+        beneficiary : proposal.beneficiary,
+        excecutor : proposal.excecutor,
+        duration : proposal.duration
+
+    }))
+    
+}
+const getProposal= async(id)=>{
+    try {
+        const proposals = getGlobalState('proposals')
+        return proposals.find((proposal)=>proposal.id==id)
+    } catch (error) {
+        reportError(error)
+    }
+
+}
+const voteOnProposal = async(proposalId,supported)=>{
+    try {
+        const contract = await getEthereumContract()
+        const account = getGlobalState("connectedAccount")
+        await contract.methods.Vote(proposalId,supported).send({from:account})
+
+        window.location.reload()
+
+    } catch (error) {
+        reportError(error)
+    }
+}
+
+const listVoters=async(id)=>{
+    try {
+        const contract = await getEthereumContract()
+        const votes = await contract.methods.getVotesOf(id).call()
+        return votes;
+        
+    } catch (error) {
+        reportError(error)
+    }
+
+}
+const payoutBeneficiary = async(id)=>{
+    try {
+        const contract = await getEthereumContract()
+        const account = getGlobalState("connectedAccount")
+        await contract.methods.payBeneficiary(id).send({from:account})
+        window.location.reload()
+    } catch (error) {
+        reportError(error)
+    }
+}
+const reportError = (error)=>{
+    console.log(JSON.stringify(error),red);
+    throw new Error('No ethereum Object,something is Wrong')
+}
+
+export {
+    connectWallet,
+    isWalletConnected,
+    performContribute,
+    raiseProposal,
+    getInfo,
+    getProposal,
+    getProposals,
+    voteOnProposal,
+    listVoters,
+    payoutBeneficiary
+}
 
 
